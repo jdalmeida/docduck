@@ -1,13 +1,18 @@
 {
   "name": "docduck",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && electron-builder",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
+  },
+  "build": {
+    "appId": "com.allpines.docduck",
+    "productName": "DocDuck",
+    "icon": "public/duck"
   },
   "dependencies": {
     "@ai-sdk/google": "^1.2.19",
