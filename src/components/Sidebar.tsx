@@ -6,12 +6,15 @@ import {
   ChevronRight,
   FileText,
   ListTodo,
+  Menu,
   Newspaper,
   Plus,
   Trash,
+  X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "../lib/utils"; // Assuming you have a `cn` utility for classnames
+import { useWindowSize } from "usehooks-ts";
 
 const DocumentItem = ({
   document,
@@ -125,15 +128,32 @@ const Sidebar = ({
   selectedDocumentId,
   onOpenTaskManager,
   onOpenKnowledgeRepository,
+  isSidebarOpen,
+  onToggleSidebar,
+  setIsSidebarOpen,
 }: {
   onSelectDocument: (id: Id<"documents"> | null) => void;
   selectedDocumentId: Id<"documents"> | null;
   onOpenTaskManager: () => void;
   onOpenKnowledgeRepository: () => void;
+  isSidebarOpen: boolean;
+  onToggleSidebar: () => void;
+  setIsSidebarOpen: (isOpen: boolean) => void;
 }) => {
   const documents = useQuery(api.documents.getSidebar, {});
   const createDocument = useMutation(api.documents.create);
   const user  = useUser();
+  const { width} = useWindowSize();
+
+  useEffect(() => {
+    if (width < 768 && isSidebarOpen) {
+      setIsSidebarOpen(false);
+    } else if (width >= 768 && !isSidebarOpen) {
+      setIsSidebarOpen(true);
+    }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setIsSidebarOpen, width]);
 
   const handleCreateDocument = () => {
     createDocument({ title: "Untitled" }).then((newDocumentId) => {
@@ -142,66 +162,95 @@ const Sidebar = ({
   };
 
   return (
-    <aside className="w-72 h-full bg-neutral-800 text-neutral-300 flex flex-col p-2">
-      <div className="p-2 flex items-center gap-2">
-        <img src="/duck.png" alt="DocDuck Logo" className="size-8" />
-        <h1 className="text-2xl font-bold">DocDuck</h1>
-      </div>
-
-      <div className="flex-grow mt-4">
-        <div className="flex items-center justify-between px-2 py-1">
-          <h2 className="text-sm font-semibold text-neutral-500">TASKS</h2>
+    <>
+      <aside
+        className={cn(
+          "h-full bg-neutral-800 transition-all duration-300 ease-in-out text-neutral-300 flex flex-col p-2",
+          "fixed md:relative z-50",
+          isSidebarOpen ? "w-72" : "w-0 p-0"
+        )}
+      >
+        <div className={cn("p-2 flex items-center justify-between", isSidebarOpen ? "flex-row" : "flex-row-reverse left-36 relative")}>
+          <div className="flex items-center gap-2">
+            <img src="/duck.png" alt="DocDuck Logo" className="size-8" />
+            <h1 className="text-2xl font-bold">DocDuck</h1>
+          </div>
           <button
-            onClick={onOpenTaskManager}
-            className="p-1 text-neutral-400 hover:text-white hover:bg-neutral-700 rounded"
-            title="Open Task Manager"
+            onClick={onToggleSidebar}
+            className="md:hidden p-1 text-neutral-400 hover:text-white hover:bg-neutral-700 rounded"
+            title="Close sidebar"
           >
-            <ListTodo className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="flex items-center justify-between px-2 py-1 mt-2">
-          <h2 className="text-sm font-semibold text-neutral-500">KNOWLEDGE</h2>
-          <button
-            onClick={onOpenKnowledgeRepository}
-            className="p-1 text-neutral-400 hover:text-white hover:bg-neutral-700 rounded"
-            title="Open Knowledge Repository"
-          >
-            <Newspaper className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="flex items-center justify-between px-2 py-1 mt-2">
-          <h2 className="text-sm font-semibold text-neutral-500">DOCUMENTS</h2>
-          <button
-            onClick={handleCreateDocument}
-            className="p-1 text-neutral-400 hover:text-white hover:bg-neutral-700 rounded"
-            title="New Document"
-          >
-            <Plus className="w-4 h-4" />
+            {isSidebarOpen ? (
+              <X className="w-6 h-6" />
+            ) : (
+              <Menu className="w-6 h-6" />
+            )}
           </button>
         </div>
 
-        <nav className="mt-2">
-          {documents?.map((doc) => (
-            <DocumentItem
-              key={doc._id}
-              document={doc}
-              onSelect={onSelectDocument}
-              selectedDocumentId={selectedDocumentId}
-            />
-          ))}
-        </nav>
-      </div>
-      
-      <div className="p-2">
-        <div className="flex items-center gap-2">
-          <UserButton />
-          <div className="flex flex-col">
-            <p className="text-sm font-medium">{user?.user?.username}</p>
-            <p className="text-xs text-neutral-500">{user?.user?.emailAddresses[0].emailAddress}</p>
+        <div className={cn("flex flex-col h-full", !isSidebarOpen && "hidden")}>
+          <div className="flex-grow mt-4">
+            <div className="flex items-center justify-between px-2 py-1">
+              <h2 className="text-sm font-semibold text-neutral-500">TASKS</h2>
+              <button
+                onClick={onOpenTaskManager}
+                className="p-1 text-neutral-400 hover:text-white hover:bg-neutral-700 rounded"
+                title="Open Task Manager"
+              >
+                <ListTodo className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex items-center justify-between px-2 py-1 mt-2">
+              <h2 className="text-sm font-semibold text-neutral-500">
+                KNOWLEDGE
+              </h2>
+              <button
+                onClick={onOpenKnowledgeRepository}
+                className="p-1 text-neutral-400 hover:text-white hover:bg-neutral-700 rounded"
+                title="Open Knowledge Repository"
+              >
+                <Newspaper className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex items-center justify-between px-2 py-1 mt-2">
+              <h2 className="text-sm font-semibold text-neutral-500">
+                DOCUMENTS
+              </h2>
+              <button
+                onClick={handleCreateDocument}
+                className="p-1 text-neutral-400 hover:text-white hover:bg-neutral-700 rounded"
+                title="New Document"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+
+            <nav className="mt-2 overflow-y-auto flex-1">
+              {documents?.map((doc) => (
+                <DocumentItem
+                  key={doc._id}
+                  document={doc}
+                  onSelect={onSelectDocument}
+                  selectedDocumentId={selectedDocumentId}
+                />
+              ))}
+            </nav>
+          </div>
+
+          <div className="p-2">
+            <div className="flex items-center gap-2">
+              <UserButton />
+              <div className="flex flex-col">
+                <p className="text-sm font-medium">{user?.user?.username}</p>
+                <p className="text-xs text-neutral-500">
+                  {user?.user?.emailAddresses[0].emailAddress}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 };
 

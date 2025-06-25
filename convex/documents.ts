@@ -236,7 +236,7 @@ export const archive = mutation({
       isArchived: true,
     });
 
-    recursiveArchive(args.id);
+    await recursiveArchive(args.id);
 
     return document;
   },

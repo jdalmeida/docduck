@@ -24,7 +24,7 @@ function createWindow() {
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL);
   } else {
-    win.loadFile(path.join(RENDERER_DIST, "index.html"));
+    win.loadURL("https://docduck.allpines.com.br");
   }
 }
 app.on("window-all-closed", () => {
@@ -38,7 +38,12 @@ app.on("activate", () => {
     createWindow();
   }
 });
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  if (VITE_DEV_SERVER_URL) {
+    app.commandLine.appendSwitch("ignore-certificate-errors");
+  }
+  createWindow();
+});
 export {
   MAIN_DIST,
   RENDERER_DIST,

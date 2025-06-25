@@ -107,7 +107,7 @@ const TaskManager = ({ onClose }: { onClose: () => void }) => {
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
-      <div className="bg-neutral-800 rounded-lg shadow-xl w-full max-w-4xl h-[70vh] flex flex-col p-4">
+      <div className="bg-neutral-800 rounded-lg shadow-xl w-11/12 max-w-md md:max-w-4xl h-[80vh] md:h-[70vh] flex flex-col p-4">
         <div className="flex items-center justify-between mb-4 border-b border-neutral-700 pb-2">
           <h2 className="text-2xl font-bold text-white">Task Manager</h2>
           <button

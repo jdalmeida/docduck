@@ -44,7 +44,7 @@ function createWindow() {
     win.loadURL(VITE_DEV_SERVER_URL)
   } else {
     // win.loadFile('dist/index.html')
-    win.loadFile(path.join(RENDERER_DIST, 'index.html'))
+    win.loadURL("https://docduck.allpines.com.br")
   }
 }
 
@@ -66,4 +66,10 @@ app.on('activate', () => {
   }
 })
 
-app.whenReady().then(createWindow)
+app.whenReady().then(() => {
+  if (VITE_DEV_SERVER_URL) {
+    app.commandLine.appendSwitch('ignore-certificate-errors')
+  }
+  
+  createWindow()
+})
