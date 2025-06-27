@@ -5,8 +5,10 @@ import { useCoverImage } from "../../hooks/use-cover-image";
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
+import { useAuth } from "../../context/AuthContext";
 
 export const CoverImageModal = () => {
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const coverImage = useCoverImage();
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
@@ -32,10 +34,11 @@ export const CoverImageModal = () => {
 
       const { storageId } = await result.json();
       
-      if(documentId) {
+      if(documentId && user) {
         await update({
           id: documentId as Id<"documents">,
           coverImage: storageId,
+          userId: user._id,
         });
       }
 

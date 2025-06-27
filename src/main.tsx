@@ -3,23 +3,18 @@ import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 import { ConvexReactClient } from "convex/react";
-import { ClerkProvider, useAuth } from '@clerk/clerk-react'
-import { ConvexProviderWithClerk } from 'convex/react-clerk'
+import { ConvexProvider } from 'convex/react'
+import { AuthProvider } from './context/AuthContext';
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
-const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY!
-
-if (!publishableKey) {
-  throw new Error('Missing VITE_CLERK_PUBLISHABLE_KEY')
-}
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <ClerkProvider publishableKey={publishableKey}>
-      <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+    <ConvexProvider client={convex}>
+      <AuthProvider>
         <App />
-      </ConvexProviderWithClerk>
-    </ClerkProvider>
+      </AuthProvider>
+    </ConvexProvider>
   </React.StrictMode>,
 )
 

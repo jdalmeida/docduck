@@ -3,12 +3,12 @@ import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
 import { BlockNoteEditor, filterSuggestionItems, PartialBlock } from "@blocknote/core";
 import { FormattingToolbar, getDefaultReactSlashMenuItems, SuggestionMenuController, useCreateBlockNote, FormattingToolbarController, getFormattingToolbarItems } from "@blocknote/react";
-import { useMutation, useQuery, useAction } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { useEffect, useRef, useState } from "react";
 import EmojiPicker, { Theme } from "emoji-picker-react";
-import { Smile, ImageIcon, HardDrive } from "lucide-react";
+import { Smile, ImageIcon } from "lucide-react";
 import { Cover } from "./CoverImage";
 import { Button } from "./ui/button";
 import { useCoverImage } from "../hooks/use-cover-image";
@@ -23,18 +23,19 @@ import {
 import "@blocknote/xl-ai/style.css";
 import { google_model } from "../lib/ai";
 import { KnowledgeGraph } from "./KnowledgeGraph";
+import { useAuth } from "../context/AuthContext";
 
 const Editor = ({
   documentId,
 }: {
   documentId: Id<"documents"> | null;
 }) => {
+  const { user } = useAuth();
   const documentData = useQuery(
     api.documents.getById,
-    documentId ? { documentId } : "skip"
+    documentId && user?._id ? { documentId, userId: user._id } : "skip"
   );
   const update = useMutation(api.documents.update);
-  const getDriveFiles = useAction(api.google.getDriveFiles);
   const coverImage = useCoverImage();
 
   const [title, setTitle] = useState(documentData?.title);
@@ -58,13 +59,6 @@ const Editor = ({
     };
   }, [pickerRef]);
 
-  const handleGetDriveFiles = async () => {
-    if (documentId) {
-      const files = await getDriveFiles();
-      console.log(files);
-    }
-  };
-
   const editor = useCreateBlockNote({
     initialContent: documentData?.content
       ? (JSON.parse(documentData.content) as PartialBlock[])
@@ -81,10 +75,11 @@ const Editor = ({
   });
 
   const handleEditorChange = () => {
-    if (editor.document && documentId) {
+    if (editor.document && documentId && user) {
       update({
         id: documentId,
         content: JSON.stringify(editor.document, null, 2),
+        userId: user._id,
       });
     }
   };
@@ -94,19 +89,21 @@ const Editor = ({
   };
 
   const handleTitleBlur = () => {
-    if (documentId) {
+    if (documentId && user) {
       update({
         id: documentId,
         title: title || "Untitled",
+        userId: user._id,
       });
     }
   };
 
   const onIconSelect = (icon: string) => {
-    if (documentId) {
+    if (documentId && user) {
       update({
         id: documentId,
         icon: icon,
+        userId: user._id,
       });
     }
     setIsPickerOpen(false);
@@ -170,15 +167,6 @@ const Editor = ({
                   Add cover
                   </Button>
               )}
-               <Button
-                onClick={handleGetDriveFiles}
-                className="text-white border-none text-xs opacity-0 group-hover:opacity-100 transition m-5 place-self-end"
-                variant="outline"
-                size="sm"
-                >
-                <HardDrive className="h-4 w-4 mr-2" />
-                Add from drive
-                </Button>
           </div>
         </div>
 

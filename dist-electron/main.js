@@ -19,12 +19,12 @@ function createWindow() {
     }
   });
   win.webContents.on("did-finish-load", () => {
-    win == null ? void 0 : win.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
+    win?.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
   });
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL);
   } else {
-    win.loadURL("https://docduck.allpines.com.br");
+    win.loadFile("dist/index.html");
   }
 }
 app.on("window-all-closed", () => {

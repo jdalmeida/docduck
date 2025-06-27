@@ -5,11 +5,13 @@ import { Doc } from "../../convex/_generated/dataModel";
 import { FormEvent, useEffect, useState } from "react";
 import { cn } from "../lib/utils";
 import { Spinner } from "./Spinner";
+import { useAuth } from "../context/AuthContext";
 
 const TaskItem = ({ task }: { task: Doc<"tasks"> }) => {
   const updateStatus = useMutation(api.tasks.updateTaskStatus);
   const updateTitle = useMutation(api.tasks.updateTaskTitle);
   const deleteTask = useMutation(api.tasks.deleteTask);
+  const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -37,12 +39,14 @@ const TaskItem = ({ task }: { task: Doc<"tasks"> }) => {
   }, [task.status, task.startTime, task.endTime]);
 
   const handleStatusChange = (status: "pending" | "in_progress" | "completed") => {
-    updateStatus({ taskId: task._id, status });
+    if (!user) return;
+    updateStatus({ taskId: task._id, status, userId: user._id });
   };
   
   const handleTitleBlur = () => {
+    if (!user) return;
     if (title !== task.title) {
-        updateTitle({ taskId: task._id, title });
+        updateTitle({ taskId: task._id, title, userId: user._id });
     }
     setIsEditing(false);
   }
@@ -84,7 +88,7 @@ const TaskItem = ({ task }: { task: Doc<"tasks"> }) => {
             <Square className="w-4 h-4 text-yellow-500" />
           </button>
         )}
-        <button onClick={() => deleteTask({ taskId: task._id })} className="p-1 hover:bg-neutral-600 rounded-full" title="Delete">
+        <button onClick={() => user && deleteTask({ taskId: task._id, userId: user._id })} className="p-1 hover:bg-neutral-600 rounded-full" title="Delete">
           <Trash className="w-4 h-4 text-red-500" />
         </button>
       </div>
@@ -93,14 +97,15 @@ const TaskItem = ({ task }: { task: Doc<"tasks"> }) => {
 };
 
 const TaskManager = ({ onClose }: { onClose: () => void }) => {
-  const tasks = useQuery(api.tasks.getTasks, {});
+  const { user } = useAuth();
+  const tasks = useQuery(api.tasks.getTasks, user?._id ? { userId: user._id } : "skip");
   const createTask = useMutation(api.tasks.createTask);
   const [newTaskTitle, setNewTaskTitle] = useState("");
 
   const handleCreateTask = (e: FormEvent) => {
     e.preventDefault();
-    if (newTaskTitle.trim()) {
-      createTask({ title: newTaskTitle.trim() });
+    if (newTaskTitle.trim() && user) {
+      createTask({ title: newTaskTitle.trim(), userId: user._id });
       setNewTaskTitle("");
     }
   };

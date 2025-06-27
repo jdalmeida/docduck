@@ -4,8 +4,8 @@ import { internal } from "./_generated/api";
 const crons = cronJobs();
 
 crons.interval(
-  "Fetch top stories from Hacker News",
-  { hours: 1 },
+  "fetch knowledge articles",
+  { minutes: 30 }, // Fetch every 30 minutes
   internal.knowledge.fetchTopStories
 );
 

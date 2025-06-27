@@ -5,6 +5,7 @@ import { ImageIcon, X } from "lucide-react";
 import { Button } from "./ui/button";
 import { cn } from "../lib/utils";
 import { useCoverImage } from "../hooks/use-cover-image";
+import { useAuth } from "../context/AuthContext";
 
 const CoverImageWithUrl = ({
   documentId,
@@ -15,11 +16,13 @@ const CoverImageWithUrl = ({
   preview?: boolean;
   url: string | null;
 }) => {
+  const { user } = useAuth();
   const coverImage = useCoverImage();
   const removeCoverImage = useMutation(api.documents.removeCoverImage);
 
   const onRemove = () => {
-    removeCoverImage({ id: documentId });
+    if (!user) return;
+    removeCoverImage({ id: documentId, userId: user._id });
   };
 
   return (
@@ -64,7 +67,10 @@ export const Cover = ({
   documentId: Id<"documents">;
   preview?: boolean;
 }) => {
-  const document = useQuery(api.documents.getById, { documentId });
+  const { user } = useAuth();
+  const document = useQuery(api.documents.getById, 
+    user?._id ? { documentId, userId: user._id } : "skip"
+  );
   const url = useQuery(
     api.files.getUrl,
     document?.coverImage

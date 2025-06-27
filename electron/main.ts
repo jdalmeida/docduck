@@ -43,8 +43,7 @@ function createWindow() {
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL)
   } else {
-    // win.loadFile('dist/index.html')
-    win.loadURL("https://docduck.allpines.com.br")
+    win.loadFile('dist/index.html')
   }
 }
 

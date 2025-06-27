@@ -1,9 +1,11 @@
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import ForceGraph2D from "react-force-graph-2d";
+import { useAuth } from "../context/AuthContext";
 
 export const KnowledgeGraph = () => {
-  const documents = useQuery(api.documents.getGraph);
+  const { user } = useAuth();
+  const documents = useQuery(api.documents.getGraph, user?._id ? { userId: user._id } : "skip");
 
   if (!documents) {
     return null;

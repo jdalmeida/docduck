@@ -5,20 +5,13 @@ export const createTask = mutation({
   args: {
     title: v.string(),
     documentId: v.optional(v.id("documents")),
+    userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const userId = identity.subject;
-
     const task = await ctx.db.insert("tasks", {
       title: args.title,
       documentId: args.documentId,
-      userId,
+      userId: args.userId,
       status: "pending",
     });
 
@@ -29,19 +22,12 @@ export const createTask = mutation({
 export const getTasks = query({
   args: {
     documentId: v.optional(v.id("documents")),
+    userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const userId = identity.subject;
-
     const query = ctx.db
       .query("tasks")
-      .withIndex("by_user", (q) => q.eq("userId", userId));
+      .withIndex("by_user", (q) => q.eq("userId", args.userId));
 
     if (args.documentId) {
       return await query
@@ -61,15 +47,13 @@ export const updateTaskStatus = mutation({
       v.literal("in_progress"),
       v.literal("completed")
     ),
+    userId: v.id("users"),
   },
-  handler: async (ctx, { taskId, status }) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
+  handler: async (ctx, { taskId, status, userId }) => {
     const task = await ctx.db.get(taskId);
     if (!task) throw new Error("Task not found");
 
-    if (task.userId !== identity.subject) {
+    if (task.userId !== userId) {
       throw new Error("Unauthorized");
     }
 
@@ -93,15 +77,13 @@ export const updateTaskTitle = mutation({
   args: {
     taskId: v.id("tasks"),
     title: v.string(),
+    userId: v.id("users"),
   },
-  handler: async (ctx, { taskId, title }) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
+  handler: async (ctx, { taskId, title, userId }) => {
     const task = await ctx.db.get(taskId);
     if (!task) throw new Error("Task not found");
 
-    if (task.userId !== identity.subject) {
+    if (task.userId !== userId) {
       throw new Error("Unauthorized");
     }
 
@@ -112,15 +94,13 @@ export const updateTaskTitle = mutation({
 export const deleteTask = mutation({
   args: {
     taskId: v.id("tasks"),
+    userId: v.id("users"),
   },
-  handler: async (ctx, { taskId }) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
+  handler: async (ctx, { taskId, userId }) => {
     const task = await ctx.db.get(taskId);
     if (!task) throw new Error("Task not found");
 
-    if (task.userId !== identity.subject) {
+    if (task.userId !== userId) {
       throw new Error("Unauthorized");
     }
 

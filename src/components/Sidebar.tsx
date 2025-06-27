@@ -1,11 +1,11 @@
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Doc, Id } from "../../convex/_generated/dataModel";
-import { UserButton, useUser } from "@clerk/clerk-react";
 import {
   ChevronRight,
   FileText,
   ListTodo,
+  LogOut,
   Menu,
   Newspaper,
   Plus,
@@ -13,8 +13,9 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { cn } from "../lib/utils"; // Assuming you have a `cn` utility for classnames
+import { cn } from "../lib/utils";
 import { useWindowSize } from "usehooks-ts";
+import { useAuth } from "../context/AuthContext";
 
 const DocumentItem = ({
   document,
@@ -28,9 +29,13 @@ const DocumentItem = ({
   level?: number;
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const children = useQuery(api.documents.getChildren, {
-    parentDocument: document._id,
-  });
+  const { user } = useAuth();
+  const children = useQuery(api.documents.getChildren, 
+    user?._id ? {
+      parentDocument: document._id,
+      userId: user._id,
+    } : "skip"
+  );
   const createDocument = useMutation(api.documents.create);
   const archiveDocument = useMutation(api.documents.archive);
 
@@ -41,10 +46,11 @@ const DocumentItem = ({
 
   const handleCreateChild = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!document._id) return;
+    if (!document._id || !user) return;
     createDocument({
       title: "Untitled",
       parentDocument: document._id,
+      userId: user._id,
     }).then((newDocId) => {
       onSelect(newDocId);
       if (!isExpanded) {
@@ -55,8 +61,8 @@ const DocumentItem = ({
 
   const handleArchive = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!document._id) return;
-    archiveDocument({ id: document._id });
+    if (!document._id || !user) return;
+    archiveDocument({ id: document._id, userId: user._id });
     if (document._id === selectedDocumentId) {
       onSelect(null);
     }
@@ -65,61 +71,56 @@ const DocumentItem = ({
   const hasChildren = children !== undefined && children.length > 0;
 
   return (
-    <>
+    <div
+      style={{ paddingLeft: `${level * 12 + 12}px` }}
+      className={cn(
+        "group flex items-center w-full max-w-full hover:bg-neutral-700 rounded-md text-sm font-medium transition-colors",
+        selectedDocumentId === document._id && "bg-neutral-700 text-white"
+      )}
+    >
+      {hasChildren && (
+        <button
+          onClick={handleExpand}
+          className="p-1 text-neutral-400 hover:text-white"
+        >
+          <ChevronRight
+            className={cn(
+              "w-4 h-4 transition-transform",
+              isExpanded && "rotate-90"
+            )}
+          />
+        </button>
+      )}
       <div
         onClick={() => onSelect(document._id)}
-        style={{ paddingLeft: `${level * 12 + 12}px` }}
-        className={cn(
-          "group flex items-center gap-x-2 py-1 pr-2 w-full hover:bg-neutral-700 rounded-md text-sm cursor-pointer text-neutral-400"
-        )}
+        className="flex items-center gap-x-2 py-2 px-3 cursor-pointer w-full max-w-48"
       >
-        {hasChildren && (
-          <button
-            onClick={handleExpand}
-            className="h-full rounded-sm hover:bg-neutral-600 p-0.5"
-          >
-            <ChevronRight
-              className={cn(
-                "h-4 w-4 shrink-0 text-neutral-500",
-                isExpanded && "rotate-90"
-              )}
-            />
-          </button>
-        )}
         {document.icon ? (
-          <span className="text-sm mr-2">{document.icon}</span>
+          <div className="flex items-center gap-x-2">
+            {document.icon}
+          </div>
         ) : (
-          <FileText className="h-4 w-4" />
+          <FileText className="w-4 h-4" />
         )}
-        <span className="truncate flex-1">{document.title}</span>
-        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-x-1">
-          <button
-            onClick={handleArchive}
-            title="Delete"
-            className="p-0.5 rounded-sm hover:bg-neutral-600"
-          >
-            <Trash className="h-4 w-4" />
-          </button>
-          <button
-            onClick={handleCreateChild}
-            title="Add a page inside"
-            className="p-0.5 rounded-sm hover:bg-neutral-600"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
-        </div>
+        <span className="truncate">{document.title}</span>
       </div>
-      {isExpanded &&
-        children?.map((child) => (
-          <DocumentItem
-            key={child._id}
-            document={child}
-            onSelect={onSelect}
-            selectedDocumentId={selectedDocumentId}
-            level={level + 1}
-          />
-        ))}
-    </>
+      <div className="flex items-center gap-x-1 pr-2">
+        <button
+          onClick={handleCreateChild}
+          className="p-1 text-neutral-400 hover:text-white opacity-0 group-hover:opacity-100"
+          title="New child document"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+        <button
+          onClick={handleArchive}
+          className="p-1 text-neutral-400 hover:text-white opacity-0 group-hover:opacity-100"
+          title="Archive document"
+        >
+          <Trash className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
   );
 };
 
@@ -131,6 +132,9 @@ const Sidebar = ({
   isSidebarOpen,
   onToggleSidebar,
   setIsSidebarOpen,
+  documents,
+  handleCreateDocument,
+  handleSignOut,
 }: {
   onSelectDocument: (id: Id<"documents"> | null) => void;
   selectedDocumentId: Id<"documents"> | null;
@@ -139,27 +143,19 @@ const Sidebar = ({
   isSidebarOpen: boolean;
   onToggleSidebar: () => void;
   setIsSidebarOpen: (isOpen: boolean) => void;
+  documents: Doc<"documents">[] | undefined;
+  handleCreateDocument: () => void;
+  handleSignOut: () => void;
 }) => {
-  const documents = useQuery(api.documents.getSidebar, {});
-  const createDocument = useMutation(api.documents.create);
-  const user  = useUser();
-  const { width} = useWindowSize();
+  const { width } = useWindowSize();
 
   useEffect(() => {
-    if (width < 768 && isSidebarOpen) {
+    if (width && width < 768) {
       setIsSidebarOpen(false);
-    } else if (width >= 768 && !isSidebarOpen) {
+    } else {
       setIsSidebarOpen(true);
     }
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setIsSidebarOpen, width]);
-
-  const handleCreateDocument = () => {
-    createDocument({ title: "Untitled" }).then((newDocumentId) => {
-      onSelectDocument(newDocumentId);
-    });
-  };
+  }, [width, setIsSidebarOpen]);
 
   return (
     <>
@@ -225,7 +221,7 @@ const Sidebar = ({
               </button>
             </div>
 
-            <nav className="mt-2 overflow-y-auto flex-1">
+            <div className="flex-grow overflow-y-auto max-w-full">
               {documents?.map((doc) => (
                 <DocumentItem
                   key={doc._id}
@@ -234,24 +230,82 @@ const Sidebar = ({
                   selectedDocumentId={selectedDocumentId}
                 />
               ))}
-            </nav>
+            </div>
           </div>
 
           <div className="p-2">
-            <div className="flex items-center gap-2">
-              <UserButton />
-              <div className="flex flex-col">
-                <p className="text-sm font-medium">{user?.user?.username}</p>
-                <p className="text-xs text-neutral-500">
-                  {user?.user?.emailAddresses[0].emailAddress}
-                </p>
+            <button
+              onClick={handleSignOut}
+              className="w-full text-left px-2 py-2 text-sm text-neutral-400 hover:text-white hover:bg-neutral-700 rounded"
+              title="Sign Out"
+            >
+              <div className="flex items-center">
+                <LogOut className="w-4 h-4 mr-2" />
+                Sign Out
               </div>
-            </div>
+            </button>
           </div>
         </div>
       </aside>
+      <button
+        onClick={onToggleSidebar}
+        className={cn(
+          "absolute top-2 left-2 md:hidden p-2 text-neutral-400 hover:text-white hover:bg-neutral-700 rounded-full transition-opacity",
+          isSidebarOpen && "opacity-0"
+        )}
+        title="Open sidebar"
+      >
+        <Menu className="w-6 h-6" />
+      </button>
     </>
   );
 };
 
-export default Sidebar; 
+export default function SidebarWrapper({
+  selectedDocumentId,
+  onSelectDocument,
+  onOpenTaskManager,
+  onOpenKnowledgeRepository,
+  isSidebarOpen,
+  onToggleSidebar,
+  setIsSidebarOpen,
+}: {
+  selectedDocumentId: Id<"documents"> | null;
+  onSelectDocument: (id: Id<"documents"> | null) => void;
+  onOpenTaskManager: () => void;
+  onOpenKnowledgeRepository: () => void;
+  isSidebarOpen: boolean;
+  onToggleSidebar: () => void;
+  setIsSidebarOpen: (isOpen: boolean) => void;
+}) {
+  const { user } = useAuth();
+  const documents = useQuery(api.documents.getSidebar, user?._id ? { userId: user._id } : "skip");
+  const createDocument = useMutation(api.documents.create);
+  const { logout } = useAuth();
+
+  const handleCreateDocument = () => {
+    if (!user) return;
+    createDocument({ title: "Untitled", userId: user._id }).then((newDocId) => {
+      onSelectDocument(newDocId);
+    });
+  };
+
+  const handleSignOut = () => {
+    logout();
+  };
+
+  return (
+    <Sidebar
+      documents={documents}
+      handleCreateDocument={handleCreateDocument}
+      handleSignOut={handleSignOut}
+      onSelectDocument={onSelectDocument}
+      selectedDocumentId={selectedDocumentId}
+      onOpenTaskManager={onOpenTaskManager}
+      onOpenKnowledgeRepository={onOpenKnowledgeRepository}
+      isSidebarOpen={isSidebarOpen}
+      onToggleSidebar={onToggleSidebar}
+      setIsSidebarOpen={setIsSidebarOpen}
+    />
+  );
+}
